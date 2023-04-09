@@ -1,0 +1,17 @@
+{
+    "icp_ledger": {
+      "ic": "vttjj-zyaaa-aaaal-aabba-cai",
+      "local": "rrkah-fqaaa-aaaaa-aaaaq-cai",
+      "staging": "vttjj-zyaaa-aaaal-aabba-cai"
+    },
+    "faucet": {
+      "local": "ryjl3-tyaaa-aaaaa-aaaba-cai",
+      "ic": "l72na-ciaaa-aaaak-aabwa-cai",
+      "staging": "l72na-ciaaa-aaaak-aabwa-cai"
+    },
+    "faucet_assets": {
+        "local": "",
+        "ic": "",
+        "staging": "rme2k-giaaa-aaaal-aabya-cai"
+    }
+  }

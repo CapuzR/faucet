@@ -1,150 +1,257 @@
-import { canisterId as faucetId, idlFactory as faucetIdlFactory } from "../../declarations/faucet/index.js";
-import { canisterId as ledgerId, idlFactory as ledgerIdlFactory } from "../../declarations/customLedger/index.js";
-import PlugConnect from '@psychedelic/plug-connect';
-import * as React from 'react';
-import { useEffect, useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import { Grid, Button, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
-import dfinityLogo from "../assets/logo.png";
-import { Typography } from "../../../node_modules/@mui/material/index.js";
-import Backdrop from '@mui/material/Backdrop';
-import CircularProgress from '@mui/material/CircularProgress';
+import * as React from "react";
+import { StoicIdentity } from "ic-stoic-identity";
 
-const network =
-  process.env.DFX_NETWORK ||
-  (process.env.NODE_ENV === "production" ? "ic" : "local");
-const host = network != "ic" ? "http://localhost:8080" : "https://mainnet.dfinity.network";
-const whitelist = [ faucetId, ledgerId ];
+import {
+  Grid,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Typography,
+  Backdrop,
+  CircularProgress,
+  Box,
+} from "@mui/material";
+import { useEffect, useState } from "react";
+import { createRoot } from "react-dom/client";
+
+import { idlFactory as idlFaucet } from "../IDLs/faucet";
+import { actor } from "./actor";
+import canisters from "../../../canister_ids.json";
+import dfinityLogo from "../assets/logo.png";
+
+const host =
+  process.env.NODE_ENV == "development"
+    ? "http://localhost:4943/"
+    : process.env.NODE_ENV == "staging"
+    ? "https://ic0.app/"
+    : "https://ic0.app/";
+
+const eLedgerCanId =
+  process.env.NODE_ENV == "development"
+    ? canisters.icp_ledger.local
+    : process.env.NODE_ENV == "staging"
+    ? canisters.icp_ledger.staging
+    : canisters.icp_ledger.ic;
+
+const eFaucetCanId =
+  process.env.NODE_ENV == "development"
+    ? canisters["faucet"].local
+    : process.env.NODE_ENV == "staging"
+    ? canisters["faucet"].staging
+    : canisters["faucet"].ic;
+const whitelist = [eFaucetCanId, eLedgerCanId];
 
 const root = createRoot(document.getElementById("app"));
 
 export default function Faucet() {
-  const [ token, setToken ] = useState('');
-  const [ connected, setConnected ] = useState(false);
-  const [ loading, setLoading ] = useState(false);
-
-  const createActor = async (id, idl)=> { 
-    return await window.ic.plug.createActor({
-      canisterId: id,
-      interfaceFactory: idl,
-    })
-  };
+  const [token, setToken] = useState("");
+  const [connected, setConnected] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [wallet, setWallet] = useState(
+    localStorage.getItem("wallet") ? localStorage.getItem("wallet") : null
+  );
+  const [identity, setIdentity] = useState()
 
   const handleChange = (event) => {
     setToken(event.target.value);
   };
 
-  const verifyConnectionAndAgent = async () => {
-    const connected = await window.ic.plug.isConnected();
-    if (!connected) window.ic.plug.requestConnect({ whitelist, host });
-    if (connected && !window.ic.plug.agent) {
-      window.ic.plug.createAgent({ whitelist, host })
+  const onSignInPlug = async () => {
+    try {
+      setLoading(true);
+      const response = await window.ic?.plug?.requestConnect({
+        host,
+        whitelist,
+      });
+
+      if (response) {
+        const principal = await window.ic.plug.agent.getPrincipal();
+        const identity = principal.toText();
+        setWallet("plug");
+        localStorage.setItem("wallet", "plug");
+        setConnected(true);
+        setLoading(false);
+
+        return { principal: identity, identity: response };
+      } else {
+        setLoading(false);
+      }
+    } catch (err) {
+      console.log(err, "Err in connect plug");
+      setLoading(false);
     }
-    setConnected(true);
   };
 
-  const handleTransfer = async (e)=> {
-    setLoading(true);
-    const faucetActor = await createActor(faucetId, faucetIdlFactory);
-    const blockHeight = await faucetActor.claim({ FICP: null }, []);
-    console.log('Block Height/Index', blockHeight);
-    setLoading(false);
+  const onSignInStoic = async () => {
+    try {
+      setLoading(true);
+      const identity = await StoicIdentity.load();
+
+      if (identity !== false) {
+        const principal = identity._principal.toText();
+        setLoading(false);
+        setWallet("stoic");
+        setIdentity(identity)
+        localStorage.setItem("wallet", "stoic");
+        setConnected(true)
+        return { identity, principal };
+      } else {
+        const identity = await StoicIdentity.connect();
+        const principal = identity._principal.toText();
+        setWallet("stoic");
+        localStorage.setItem("wallet", "stoic");
+        setConnected(true)
+        setLoading(false);
+        return { identity, principal };
+      }
+    } catch (err) {
+      console.log(err, "ERR in connect Stoic");
+      setLoading(false);
+    }
   };
-  
-  useEffect(() => {
-    verifyConnectionAndAgent();
-  }, []);
+
+  const handleTransfer = async (e) => {
+    setLoading(true);
+    console.log("identity", identity);
+    const faucetActor = await actor(
+      { host: host, whitelist },
+      { canisterId: eFaucetCanId, interfaceFactory: idlFaucet },
+      identity,
+      wallet
+    );
+    console.log(faucetActor);
+    const blockHeight = await faucetActor.claim({ FICP: null }, []);
+    console.log("Block Height/Index", blockHeight);
+    setLoading(false);
+    // localStorage.getItem("wallet");
+  };
 
   return (
     <div>
-      {
-        loading &&
+      {loading && (
         <Backdrop
-        sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
-        open={open}
-      >
-        <CircularProgress color="inherit" />
-      </Backdrop>
-      }
+          sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
+          open={open}
+        >
+          <CircularProgress color="inherit" />
+        </Backdrop>
+      )}
       <Grid container spacing={3} justifyContent="center">
-        {
-          !connected ?
-          <Grid item xs={12} textAlign="right">
-            <a onClick={()=>{ setLoading(true); }}>
-            <PlugConnect
-              title="Connect"
-              whitelist={whitelist}
-              onConnectCallback={() => {console.log("Connected"); setConnected(true); setLoading(false);}}
-              host={host}
-              dark
-            />
-            </a>
-          </Grid>
-          :
-          <Grid item xs={12} textAlign="right">
-            <Button variant="text" onClick={()=>{setConnected(false)}}>Disconnect</Button>
-          </Grid>
-        }
-        <Grid item xs={12} style={{marginTop: "10vh"}}>
+        <Grid item xs={12} style={{ marginTop: "10vh" }}>
           <form onSubmit={handleTransfer}>
             <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <img src={dfinityLogo}/>
-            </Grid>
-            <Grid item xs={12} textAlign="center">
-              <Typography>
-                FAUCET
-              </Typography>
-            </Grid>
-            <Grid item xs={3} textAlign="center">
-            </Grid>
-            <Grid item xs={12} md={6} textAlign="center">
-              <FormControl fullWidth>
-                <InputLabel id="demo-simple-select-label">Token</InputLabel>
-                <Select
-                  disabled = {!connected}
-                  labelId="demo-simple-select-label"
-                  id="demo-simple-select"
-                  value={token}
-                  label="Select your preferred token"
-                  onChange={handleChange}
+              <Grid item xs={12}>
+                <img src={dfinityLogo} />
+              </Grid>
+              {!connected ? (
+                <Box
+                  style={{
+                    display: "flex",
+                    width: "100%",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
                 >
-                  <MenuItem value={10}>FICP</MenuItem>
-                  <MenuItem disabled value={20}>FEXT</MenuItem>
-                  <MenuItem disabled value={30}>FT20</MenuItem>
-                  <MenuItem disabled value={30}>FBTC</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={3} textAlign="center">
-            </Grid>
-            <Grid item xs={12} textAlign="center">
-              <Button
-                variant="contained"
-                disabled = {!connected}
-                component="label"
-                onClick={handleTransfer}
-                style={{ backgroundColor: "#2d2d2d" }}
-              >
-                Claim
-              </Button>
-            </Grid>
+                  <Box style={{ width: "100%", marginBottom: 40 }}>
+                    <Button
+                      onClick={async () => {
+                        const identity = await onSignInPlug();
+                        console.log(identity);
+                      }}
+                      fullWidth
+                      style={{
+                        background: "#313754",
+                        borderRadius: 18,
+                        border: "2px solid rgb(57 173 226 / 42%)",
+                      }}
+                    >
+                      <img alt="" src={"../plugIcon.svg"} />
+                    </Button>
+                  </Box>
+                  <Box style={{ width: "100%", marginBottom: 40 }}>
+                    <Button
+                      onClick={async () => {
+                        const identity = await onSignInStoic();
+                        console.log(identity)   
+                      }}
+                      fullWidth
+                      style={{
+                        background: "#313754",
+                        borderRadius: 18,
+                        border: "2px solid rgb(57 173 226 / 42%)",
+                      }}
+                    >
+                      <img alt="" src={"../stoicLogo.svg"} />
+                    </Button>
+                  </Box>
+                </Box>
+              ) : (
+                <>
+                  <Grid item xs={12} textAlign="center">
+                    <Typography>FAUCET</Typography>
+                  </Grid>
+                  <Grid item xs={3} textAlign="center"></Grid>
+                  <Grid item xs={12} md={6} textAlign="center">
+                    <FormControl fullWidth>
+                      <InputLabel id="demo-simple-select-label">
+                        Token
+                      </InputLabel>
+                      <Select
+                        disabled={!connected}
+                        labelId="demo-simple-select-label"
+                        id="demo-simple-select"
+                        value={token}
+                        label="Select your preferred token"
+                        onChange={handleChange}
+                      >
+                        <MenuItem value={10}>FICP</MenuItem>
+                        <MenuItem disabled value={20}>
+                          FEXT
+                        </MenuItem>
+                        <MenuItem disabled value={30}>
+                          FT20
+                        </MenuItem>
+                        <MenuItem disabled value={30}>
+                          FBTC
+                        </MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={3} textAlign="center"></Grid>
+                  <Grid item xs={12} textAlign="center">
+                    <Button
+                      variant="contained"
+                      disabled={!token}
+                      component="label"
+                      onClick={handleTransfer}
+                      style={{ backgroundColor: "#2d2d2d" }}
+                    >
+                      Claim
+                    </Button>
+                  </Grid>
+                </>
+              )}
             </Grid>
           </form>
         </Grid>
-        <Grid item xs={12} style={{marginTop: "10vh", position: "absolute", bottom: 10}}>
+        <Grid
+          item
+          xs={12}
+          style={{ marginTop: "10vh", position: "absolute", bottom: 10 }}
+        >
           <Grid item xs={12} textAlign="center">
             <Typography>
               <a href="">Github Repo</a>
             </Typography>
-            <Typography>
-              Developed by: Weavers Labs
-            </Typography>
+            <Typography>Developed by: Weavers Labs</Typography>
           </Grid>
         </Grid>
       </Grid>
     </div>
   );
-};
+}
 
-root.render(<Faucet/>);
+root.render(<Faucet />);

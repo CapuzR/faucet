@@ -13,11 +13,6 @@
         "dist/faucet_assets/"
       ],
       "type": "assets"
-    },
-    "customLedger": {
-      "type": "custom",
-      "wasm": "ledger.wasm", 
-      "candid": "ledger.public.did"
     }
   },
   "defaults": {
@@ -26,12 +21,13 @@
       "packtool": ""
     }
   },
-  "dfx": "0.9.3",
   "networks": {
-    "local": {
-      "bind": "127.0.0.1:4943",
-      "type": "ephemeral"
-    }
+    "staging": {
+      "providers": [
+          "https://ic0.app"
+      ],
+      "type": "persistent"
+  }
   },
   "version": 1
 }
