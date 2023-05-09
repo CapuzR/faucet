@@ -1,0 +1,53 @@
+type anon_class_12_1 = 
+ service {
+   addAuthorize: (vec principal) -> (Result);
+   claim: (Token, opt vec nat8) -> (Result_1);
+   readTokenOptions: () -> (Options__1) query;
+   updateTokenOptions: (Token, Options__1) -> (Result);
+ };
+type Token = 
+ variant {
+   FBTC;
+   FEXT;
+   FICP;
+   FT20;
+ };
+type Result_1 = 
+ variant {
+   err: Error;
+   ok: BlockHeight;
+ };
+type Result = 
+ variant {
+   err: Error;
+   ok;
+ };
+type Options__1 = 
+ record {
+   fbtc: Option;
+   fext: Option;
+   ficp: Option;
+   ft20: Option;
+ };
+type Options = 
+ record {
+   fbtc: Option;
+   fext: Option;
+   ficp: Option;
+   ft20: Option;
+ };
+type Option = 
+ record {
+   baseAmount: nat64;
+   baseFee: nat64;
+   canId: text;
+ };
+type Error = 
+ variant {
+   BadParameters;
+   NonExistentItem;
+   NotAuthorized;
+   Unknown: text;
+ };
+type BlockHeight = nat64;
+service : (Options) -> anon_class_12_1

@@ -29,8 +29,9 @@ const host =
   process.env.NODE_ENV == "development"
     ? "http://localhost:4943/"
     : process.env.NODE_ENV == "staging"
-    ? "https://mainnet.dfinity.network/"
-    : "https://mainnet.dfinity.network/";
+    ? "https://ic0.app/"
+    : "https://ic0.app/";
+
 const eLedgerCanId =
   process.env.NODE_ENV == "development"
     ? canisters.icp_ledger.local

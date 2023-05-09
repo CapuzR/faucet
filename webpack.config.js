@@ -103,7 +103,7 @@ module.exports = {
       ],
     }),
     new webpack.EnvironmentPlugin({
-      NODE_ENV: "development",
+      NODE_ENV: "staging",
       ...canisterEnvVariables,
     }),
     new webpack.ProvidePlugin({

@@ -32,7 +32,7 @@ export const actor = async (
     if (process.env.NODE_ENV == "development") {
       agent.fetchRootKey();
     }
-    console.log(agent, "agent")
+    console.log(agent, "agent");
     return await Actor.createActor(actorOptions.interfaceFactory, {
       agent,
       canisterId: actorOptions.canisterId,
