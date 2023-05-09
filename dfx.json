@@ -8,29 +8,14 @@
       "frontend": {
         "entrypoint": "src/faucet_assets/src/index.html"
       },
-      "source": [
-        "src/faucet_assets/assets",
-        "dist/faucet_assets/"
-      ],
+      "source": ["dist/faucet_assets/"],
       "type": "assets"
-    },
-    "customLedger": {
-      "type": "custom",
-      "wasm": "ledger.wasm", 
-      "candid": "ledger.public.did"
     }
   },
   "defaults": {
     "build": {
       "args": "",
       "packtool": ""
-    }
-  },
-  "dfx": "0.9.3",
-  "networks": {
-    "local": {
-      "bind": "127.0.0.1:4943",
-      "type": "ephemeral"
     }
   },
   "version": 1

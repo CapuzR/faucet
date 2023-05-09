@@ -36,7 +36,7 @@ shared({ caller = owner }) actor class(initOptions: Types.Options) = this {
         };
         let result = await aCActor.transfer({
           to = AID.fromPrincipalToBlob(caller, subAccount);
-          fee = { e8s = 0 };
+          fee = { e8s = options.ficp.baseFee };
           from_subaccount = null;
           created_at_time = null;
           memo = 0;

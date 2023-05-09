@@ -13,6 +13,7 @@ If you want to have your own faucet, feel free to follow next section steps.
 ### 1. Clone [Faucet repository](https://github.com/CapuzR/ICPFaucet).
 
 ### 2. Get a pre-built Ledger canister module and Candid interface files.
+
 NOTE: The `IC_VERSION` variable is a commit hash from the [DFINITY repository](http://github.com/dfinity/ic).
 
 ```bash
@@ -24,10 +25,12 @@ curl -o ledger.public.did https://raw.githubusercontent.com/dfinity/ic/${IC_VERS
 ```
 
 ### 3. Make sure you use a recent version of DFX.
-  If you don't have DFX installed, follow instructions on https://smartcontracts.org/ to install it.
+
+If you don't have DFX installed, follow instructions on https://smartcontracts.org/ to install it.
 
 ### 4. If you don't have a DFX project yet, follow these instructions to create a new DFX project:
-  https://smartcontracts.org/docs/developers-guide/cli-reference/dfx-new.html
+
+https://smartcontracts.org/docs/developers-guide/cli-reference/dfx-new.html
 
 ### 5. Copy the file you obtained at the first step (`ledger.wasm`, `ledger.private.did`, `ledger.public.did`) into the root of your project.
 
@@ -71,7 +74,9 @@ dfx deploy --network ${NETWORK} customLedger --argument '(record {
   send_whitelist = vec {};
 })'
 ```
+
 where
+
 - the `NETWORK` is the url or name of the replica where you want to deploy the ledger (e.g. use ic for the mainnet or local)
 - the `TOKEN_NAME` is the human-readable name of your new token
 - the `TOKEN_SYMBOL` is the symbol of your new token
@@ -95,14 +100,16 @@ For testing purposes we doesn't include archive_options on mainnet.
      ...
    }
  }
- ```
+```
 
 ### 11. Check that the Ledger canister is healthy. Execute the following command:
 
 ```bash
 dfx canister --network ${NETWORK} call customLedger symbol
 ```
- The output should look like the following:
+
+The output should look like the following:
+
 ```bash
 (record { symbol = "FICP" })
 ```
@@ -111,30 +118,29 @@ dfx canister --network ${NETWORK} call customLedger symbol
 
 ```bash
 export LEDGER_ID=$(dfx canister id customLedger)
-dfx deploy --network ${NETWORK} faucet --argument '(record { 
+dfx deploy --network ${NETWORK} faucet --argument '(record {
     ficp = record {
       canId = "'${LEDGER_ID}'";
       baseAmount = 1_000_000_000;
-      baseFee = 10_000
+      baseFee = 0
     };
     fext = record {
       canId = "";
       baseAmount = 1_000_000_000;
-      baseFee = 10_000
+      baseFee = 0
     };
     ft20 = record {
       canId = "";
       baseAmount = 1_000_000_000;
-      baseFee = 10_000
+      baseFee = 0
     };
     fbtc = record {
       canId = "";
       baseAmount = 1_000_000_000;
-      baseFee = 10_000
+      baseFee = 0
     }
   })'
 ```
-
 
 ## Test and use the Faucet from dfx
 
@@ -157,7 +163,7 @@ dfx canister --network ${NETWORK} call customLedger account_balance '(record { a
 
 ```bash
 export LEDGER_ID="<ledger-canister-id>"
-dfx canister call customLedger account_balance '(record { 
+dfx canister call customLedger account_balance '(record {
     ficp = record {
       canId = "<new-ledger-canister-id>";
       baseAmount = 1_000_000_000;

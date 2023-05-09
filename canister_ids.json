@@ -1,0 +1,12 @@
+{
+  "icp_ledger": {
+    "ic": "vttjj-zyaaa-aaaal-aabba-cai",
+    "local": "rrkah-fqaaa-aaaaa-aaaaq-cai",
+    "staging": "vttjj-zyaaa-aaaal-aabba-cai"
+  },
+  "faucet-backend": {
+    "local": "sbzkb-zqaaa-aaaaa-aaaiq-cai",
+    "ic": "rz2vk-paaaa-aaaan-qa2ia-cai",
+    "staging": "rz2vk-paaaa-aaaan-qa2ia-cai"
+  }
+}
