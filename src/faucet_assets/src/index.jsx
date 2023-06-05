@@ -1,6 +1,5 @@
 import * as React from "react";
 import { StoicIdentity } from "ic-stoic-identity";
-
 import {
   Grid,
   Button,
@@ -18,11 +17,11 @@ import {
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-
 import { idlFactory as idlFaucet } from "../IDLS/faucet";
-import { actor } from "./actor";
+import { actor as Actor } from "./actor";
 import canisters from "../../../canister_ids.json";
 import dfinityLogo from "../assets/logo.png";
+import * as Connections from "./Services/Connections";
 
 const network =
   process.env.DFX_NETWORK ||
@@ -56,6 +55,7 @@ export default function Faucet() {
   const [token, setToken] = useState("");
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [balance, setBalance] = useState(0);
   const [wallet, setWallet] = useState(
     localStorage.getItem("wallet") ? localStorage.getItem("wallet") : null
   );
@@ -65,6 +65,8 @@ export default function Faucet() {
   const handleChange = (event) => {
     setToken(event.target.value);
   };
+
+
 
   const onSignInPlug = async () => {
     try {
@@ -152,24 +154,40 @@ export default function Faucet() {
 
 
   const handleTransfer = async (e) => {
-    setClaim(true);
-    setLoading(true);
-    const faucetActor = await actor(
-      { host: host, whitelist },
-      { canisterId: eFaucetCanId, interfaceFactory: idlFaucet },
-      identity,
-      wallet,
-      host
-    );
-    console.log(faucetActor);
-    const blockHeight = await faucetActor.claim({ FICP: null }, []);
-    console.log("Block Height/Index", blockHeight);
-    setLoading(false);
-    setInterval(() => {
-      setClaim(false)
-    }, 5000);
+    try {
+      setClaim(true);
+      setLoading(true);
+      const faucetActor = await Actor(
+        { host: host, whitelist },
+        { canisterId: eFaucetCanId, interfaceFactory: idlFaucet },
+        identity,
+        wallet,
+        host
+      );
+      console.log(faucetActor);
+      const blockHeight = await faucetActor.claim({ FICP: null }, []);
+      console.log("Block Height/Index", blockHeight);
+      setLoading(false);
+      setInterval(() => {
+        setClaim(false)
+      }, 5000);
+    }catch (error) {
+      console.log(error)
+  }
     // localStorage.getItem("wallet");
   };
+
+  const getBalance = async () => {
+    const balanceRes = await Connections.getBalance();
+    setBalance(parseInt(balanceRes) / 100000000);
+  };
+
+  useEffect(() => {
+    if (connected) {
+      getBalance();
+    }
+  });
+
 
   return (
     <div>
@@ -182,6 +200,51 @@ export default function Faucet() {
         </Backdrop>
       )}
       <Grid container spacing={3} justifyContent="center">
+        <Grid item xs={6}>
+          {
+            connected ? 
+              <Grid
+                item
+                container
+                style={{
+                  width: "20%",
+                  backgroundColor: "transparent",
+                  zIndex: "9",
+                  position: "absolute",
+                  Top: 0,
+                  left: 0,
+                }}
+              >
+                <Grid item xs={12}>
+                  <Button
+                    style={{
+                      color: "#fff",
+                      marginTop: "10px",
+                      marginLeft: "10px",
+                      borderColor: "#fff",
+                    }}
+                    variant="outlined"
+                    aria-label="refresh balance"
+                    component="label"
+                    size="small"
+                    onClick={() => {
+                      getBalance();
+                    }}
+                  >
+                    <p style={{ fontSize: "12px", color: "#fff" }}>
+                      Balance:{" "}
+                      {balance == 0
+                        ? 0.0
+                        : Math.round((balance + Number.EPSILON) * 100) / 100}{" "}
+                      FICP ⟲
+                    </p>
+                  </Button>
+                </Grid>
+              </Grid>
+            :
+            ''
+          }
+        </Grid>
         <Grid item xs={12}>
           <form onSubmit={handleTransfer}>
             <Grid container spacing={2}>
