@@ -1,0 +1,199 @@
+== Deploy the Faucet
+
+Follow the steps below to deploy your copy of the ledger canister to a local replica.
+
+. Get a pre-built Ledger canister module and Candid interface files.
++
+NOTE: The `IC_VERSION` variable is a commit hash from the http://github.com/dfinity/ic repository.
++
+[source,sh]
+----
+export IC_VERSION=a7058d009494bea7e1d898a3dd7b525922979039
+curl -o ledger.wasm.gz https://download.dfinity.systems/ic/${IC_VERSION}/canisters/ledger-canister_notify-method.wasm.gz
+gunzip ledger.wasm.gz
+curl -o ledger.private.did https://raw.githubusercontent.com/dfinity/ic/${IC_VERSION}/rs/rosetta-api/ledger.did
+curl -o ledger.public.did https://raw.githubusercontent.com/dfinity/ic/${IC_VERSION}/rs/rosetta-api/ledger_canister/ledger.did
+----
+
+. Make sure you use a recent version of DFX.
+  If you don't have DFX installed, follow instructions on https://smartcontracts.org/ to install it.
+
+. If you don't have a DFX project yet, follow these instructions to create a new DFX project:
+  https://smartcontracts.org/docs/developers-guide/cli-reference/dfx-new.html
+
+. Copy the file you obtained at the first step (`ledger.wasm`, `ledger.private.did`, `ledger.public.did`) into the root of your project.
+
+. Add the following canister definition to the `dfx.json` file in your project:
++
+[source,json]
+----
+{
+  "canisters": {
+    "customLedger": {
+      "type": "custom",
+      "wasm": "ledger.wasm",
+      "candid": "ledger.private.did"
+    }
+  }
+}
+----
+
+. Start a local replica cleanning everything.
++
+[source,sh]
+----
+dfx start --clean
+----
+
+. In a different console create all the canisters:
++
+[source,sh]
+----
+dfx canister create --all
+----
+
+. Deploy the token faucet.
++
+[source,sh]
+----
+export MINT_ACC=$(dfx ledger account-id --of-canister faucet)
+export ARCHIVE_CONTROLLER=$(dfx identity get-principal)
+export TOKEN_NAME="FaucetICP"
+export TOKEN_SYMBOL="FICP"
+export NETWORK=local
+
+dfx deploy --network ${NETWORK} customLedger --argument '(record {
+  token_name = opt "'${TOKEN_NAME}'";
+  token_symbol = opt "'${TOKEN_SYMBOL}'";
+  minting_account = "'${MINT_ACC}'";
+  transfer_fee = opt record{ e8s = 10_000 };
+  initial_values = vec {};
+  send_whitelist = vec {};
+  archive_options = opt record {
+    trigger_threshold = 2000;
+    num_blocks_to_archive = 1000;
+    controller_id = principal "'${ARCHIVE_CONTROLLER}'";
+    cycles_for_archive_creation = opt 10_000_000_000_000
+  }
+})'
+----
+where
+- the `NETWORK` is the url or name of the replica where you want to deploy the ledger (e.g. use ic for the mainnet or local)
+- the `TOKEN_NAME` is the human-readable name of your new token
+- the `TOKEN_SYMBOL` is the symbol of your new token
+- the `MINT_ACC` is the account of the Principal responsible for minting and burning tokens (see the xref:ledger.adoc[Ledger documentation]). In this case we're assigning a canister as the responsible.
+- the `ARCHIVE_CONTROLLER` is the xref:https://smartcontracts.org/docs/developers-guide/default-wallet.html#_controller_and_custodian_roles[controller Principal] of the archive canisters.
+
+. Update the canister definition in the `dfx.json` file to use the public Candid interface:
++
+[source,diff]
+----
+ {
+   "canisters": {
+     "ledger": {
+       "type": "custom",
+       "wasm": "ledger.wasm",
+-       "candid": "ledger.private.did"
++       "candid": "ledger.public.did"
+     }
+   }
+ }
+----
++
+
+. Check that the Ledger canister is healthy. Execute the following command:
++
+[source,sh]
+----
+dfx canister --network ${NETWORK} call customLedger symbol
+----
++
+The output should look like the following:
++
+[example]
+----
+(record { symbol = "FICP" })
+----
+
+. Deploy Faucet canister
++
+[source,sh]
+----
+export LEDGER_ID=$(dfx canister id customLedger)
+dfx deploy faucet --argument '(record { 
+    ficp = record {
+      canId = "'${LEDGER_ID}'";
+      baseAmount = 1_000_000_000;
+      baseFee = 10_000
+    };
+    fext = record {
+      canId = "";
+      baseAmount = 1_000_000_000;
+      baseFee = 10_000
+    };
+    ft20 = record {
+      canId = "";
+      baseAmount = 1_000_000_000;
+      baseFee = 10_000
+    };
+    fbtc = record {
+      canId = "";
+      baseAmount = 1_000_000_000;
+      baseFee = 10_000
+    }
+  })'
+----
++
+If you want to deploy the frontend canister you should do: 
++ 
+[source,sh] 
+---- 
+dfx deploy faucet_assets
+----
+
+== Test and use the Faucet
+
+. Transfer funds from the ICP faucet to your account:
++
+[source,sh]
+----
+dfx canister call faucet claim '(variant { FICP }; vec {})'
+----
+
+. Check your account balance:
++
+[source,sh]
+----
+export TEST_ACC=$(dfx ledger account-id)
+
+dfx canister call customLedger account_balance '(record { account = '$(python3 -c 'print("vec{" + ";".join([str(b) for b in bytes.fromhex("'$TEST_ACC'")]) + "}")')' })'
+----
+
+. Update token options:
++
+[source,sh]
+----
+export LEDGER_ID="<ledger-canister-id>"
+dfx canister call customLedger account_balance '(record { 
+    ficp = record {
+      canId = "'${LEDGER_ID}'";
+      baseAmount = 1_000_000_000;
+      baseFee = 10_000
+    };
+    fext = record {
+      canId = "";
+      baseAmount = 1_000_000_000;
+      baseFee = 10_000
+    };
+    ft20 = record {
+      canId = "";
+      baseAmount = 1_000_000_000;
+      baseFee = 10_000
+    };
+    fbtc = record {
+      canId = "";
+      baseAmount = 1_000_000_000;
+      baseFee = 10_000
+    }
+  })'
+----
